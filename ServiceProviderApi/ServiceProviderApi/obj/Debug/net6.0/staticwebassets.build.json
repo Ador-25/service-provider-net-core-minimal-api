@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "3vZKNqiBH/T8IwX/aDFmj1QlU+4A2/4hZECeKh+ptyI=",
+  "Source": "ServiceProviderApi",
+  "BasePath": "_content/ServiceProviderApi",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
