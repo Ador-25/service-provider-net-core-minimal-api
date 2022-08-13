@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,19 +13,16 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-
+//find all users
 app.MapGet("/Users", async (UserDbContext db) =>
 {
     return await db.Users.ToListAsync();
 });
-
+//find all service providers
 app.MapGet("/ServiceProviders", async (UserDbContext db) =>
 {
     return await db.ServiceProviders.ToListAsync();
 });
-
-//filter search apis=>
-
 app.MapGet("/ServiceProviders/Electrician", async (UserDbContext db) =>
 {
     return await db.ServiceProviders.
@@ -36,7 +35,6 @@ app.MapGet("/ServiceProviders/Technician", async (UserDbContext db) =>
     Where(u => u.ServiceType == TypeofEmployees.Technician).
     ToListAsync();
 });
-
 app.MapGet("/ServiceProviders/Plumber", async (UserDbContext db) =>
 {
     return await db.ServiceProviders.
@@ -76,7 +74,6 @@ app.MapGet("/ServiceProviders/{id}", async (UserDbContext db, int id) =>
 {
     return await db.ServiceProviders.FindAsync(id) is ServiceProvider serviceprovider ? Results.Ok(serviceprovider) : Results.NotFound();
 });
-
 app.MapPost("/Add_User", async (UserDbContext db, User user) =>
 {
     await db.Users.AddAsync(user);
@@ -97,7 +94,6 @@ app.MapDelete("/Users/{id}", async (UserDbContext db, int id) =>
         return Results.NotFound();
     }
 });
-
 app.MapPost("/Add_ServiceProvider", async (UserDbContext db, ServiceProvider serviceprovider) =>
 {
     await db.ServiceProviders.AddAsync(serviceprovider);
@@ -119,19 +115,25 @@ app.MapDelete("/ServiceProvider/{id}", async (UserDbContext db, int id) =>
     }
 });
 app.Run();
+
+
+
+
+
+
+//Context Class
 public class UserDbContext : DbContext
 {
     public UserDbContext(DbContextOptions options) : base(options) { }
     public DbSet<User> Users { get; set; }
     public DbSet<ServiceProvider> ServiceProviders { get; set; }
 }
-
-
+//Models
 public class User
 {
     public string FirstName { get; set; }
     public string LastName { get; set; }
-
+    [Key]
     public int UserID { get; set; }
 
     public string Email { get; set; }
@@ -142,11 +144,23 @@ public class User
 
 }
 
+public class UserRequestsServiceR
+{
+    [Key,Column(Order =1)]
+    public int UserID { get; set; }
+    public User User { get; set; }
+
+    [Key, Column(Order = 2)]
+    public int ServiceProviderID { get; set; }
+    public ServiceProvider ServiceProvider { get; set; }
+}
+
 public class ServiceProvider
 {
     public string FirstName { get; set; }
     public string LastName { get; set; }
-    public int UserID { get; set; }
+    [Key]
+    public int ServiceProviderID { get; set; }
 
     public string Email { get; set; }
 
