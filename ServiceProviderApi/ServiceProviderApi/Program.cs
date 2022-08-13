@@ -117,10 +117,6 @@ app.MapDelete("/ServiceProvider/{id}", async (UserDbContext db, int id) =>
 app.Run();
 
 
-
-
-
-
 //Context Class
 public class UserDbContext : DbContext
 {

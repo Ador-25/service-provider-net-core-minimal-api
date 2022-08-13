@@ -40,6 +40,18 @@
         "net6.0": {
           "targetAlias": "net6.0",
           "dependencies": {
+            "Auth0.AuthenticationApi": {
+              "target": "Package",
+              "version": "[7.17.0, )"
+            },
+            "Google.Apis.Auth": {
+              "target": "Package",
+              "version": "[1.57.0, )"
+            },
+            "Microsoft.AspNetCore.Identity.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[6.0.8, )"
+            },
             "Microsoft.EntityFrameworkCore": {
               "target": "Package",
               "version": "[6.0.8, )"
