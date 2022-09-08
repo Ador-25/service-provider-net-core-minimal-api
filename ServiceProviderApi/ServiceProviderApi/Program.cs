@@ -1,11 +1,48 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using ServiceProviderApi.Auth;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<UserDbContext>(opt => opt.UseInMemoryDatabase("DBUser"));
-
+//builder.Services.AddDbContext<UserDbContext>(opt => opt.UseInMemoryDatabase("DBUser"));
+builder.Services.AddDbContext<UserDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("serviceDb")));
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<UserDbContext>()
+    .AddDefaultTokenProviders();
+builder.Services.AddHttpContextAccessor();
+// Adding Authentication  
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+}).AddJwtBearer(o =>
+{
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey
+        (Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = false,
+        ValidateIssuerSigningKey = true
+    };
+});
+builder.Services.AddAuthorization();
+builder.Services.AddCors();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -23,51 +60,52 @@ app.MapGet("/ServiceProviders", async (UserDbContext db) =>
 {
     return await db.ServiceProviders.ToListAsync();
 });
-app.MapGet("/ServiceProviders/Electrician", async (UserDbContext db) =>
+app.MapGet("/ServiceProviders/Electrician/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
 {
     return await db.ServiceProviders.
     Where(u => u.ServiceType == TypeofEmployees.Electrician).
     ToListAsync();
 });
-app.MapGet("/ServiceProviders/Technician", async (UserDbContext db) =>
+app.MapGet("/ServiceProviders/Technician/{lat}/{lon}", async (UserDbContext db) =>
 {
     return await db.ServiceProviders.
     Where(u => u.ServiceType == TypeofEmployees.Technician).
     ToListAsync();
 });
-app.MapGet("/ServiceProviders/Plumber", async (UserDbContext db) =>
+app.MapGet("/ServiceProviders/Plumber/{lat}/{lon}", async (UserDbContext db,double lat, double lon) =>
 {
     return await db.ServiceProviders.
     Where(u => u.ServiceType == TypeofEmployees.Plumber).
     ToListAsync();
 });
-app.MapGet("/ServiceProviders/DeliveryMan", async (UserDbContext db) =>
+app.MapGet("/ServiceProviders/DeliveryMan/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
 {
     return await db.ServiceProviders.
     Where(u => u.ServiceType == TypeofEmployees.DeliveryMan).
     ToListAsync();
 });
-app.MapGet("/ServiceProviders/Driver", async (UserDbContext db) =>
+app.MapGet("/ServiceProviders/Driver/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
 {
     return await db.ServiceProviders.
     Where(u => u.ServiceType == TypeofEmployees.Driver).
     ToListAsync();
 });
-app.MapGet("/ServiceProviders/Carpenter", async (UserDbContext db) =>
+app.MapGet("/ServiceProviders/Carpenter/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
 {
     return await db.ServiceProviders.
     Where(u => u.ServiceType == TypeofEmployees.Carpenter).
     ToListAsync();
 });
-app.MapGet("/ServiceProviders/Mechanic", async (UserDbContext db) =>
+app.MapGet("/ServiceProviders/Mechanic/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
 {
     return await db.ServiceProviders.
     Where(u => u.ServiceType == TypeofEmployees.Mechanic).
     ToListAsync();
 });
-app.MapGet("/Users/{id}", async (UserDbContext db, int id) =>
+app.MapGet("/Users/{email}", async (UserDbContext db, string email) =>
 {
-    return await db.Users.FindAsync(id) is User user ? Results.Ok(user) : Results.NotFound();
+    return db.Users
+    .Where(u => u.Email == email).First();
 });
 
 app.MapGet("/ServiceProviders/{id}", async (UserDbContext db, int id) =>
@@ -76,9 +114,11 @@ app.MapGet("/ServiceProviders/{id}", async (UserDbContext db, int id) =>
 });
 app.MapPost("/Add_User", async (UserDbContext db, User user) =>
 {
+    var userExists = await db.Users.FirstOrDefaultAsync(u => u.Email == user.Email);
+    if(userExists!=null)
+        return Results.Ok("Already Exists");
     await db.Users.AddAsync(user);
     await db.SaveChangesAsync();
-
     return Results.Ok(user);
 });
 app.MapDelete("/Users/{id}", async (UserDbContext db, int id) =>
@@ -94,9 +134,13 @@ app.MapDelete("/Users/{id}", async (UserDbContext db, int id) =>
         return Results.NotFound();
     }
 });
+
 app.MapPost("/Add_ServiceProvider", async (UserDbContext db, ServiceProvider serviceprovider) =>
 {
-    await db.ServiceProviders.AddAsync(serviceprovider);
+    var userExists = await db.ServiceProviders.FirstOrDefaultAsync(u => u.Email == serviceprovider.Email);
+    if (userExists != null)
+        await db.ServiceProviders.AddAsync(serviceprovider);
+    await db.AddAsync(serviceprovider);
     await db.SaveChangesAsync();
 
     return Results.Ok(serviceprovider);
@@ -114,13 +158,145 @@ app.MapDelete("/ServiceProvider/{id}", async (UserDbContext db, int id) =>
         return Results.NotFound();
     }
 });
-app.Run();
 
+
+
+app.MapPost("/login-user",
+[AllowAnonymous] (LoginUser user,UserDbContext db) =>
+{
+    var users =db.Users.ToList();
+    bool match = false;
+    int id=0;
+    foreach (var temp in users)
+    {
+        if(temp.Email==user.UserName && temp.Password == user.Password)
+        {
+            match = true;
+            id = temp.UserID;
+            break;
+        }
+
+    }
+    if (match)
+    {
+        var issuer = builder.Configuration["Jwt:Issuer"];
+        var audience = builder.Configuration["Jwt:Audience"];
+        var key = Encoding.ASCII.GetBytes
+        (builder.Configuration["Jwt:Key"]);
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim("Id", Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Email, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti,
+                Guid.NewGuid().ToString())
+             }),
+            Expires = DateTime.UtcNow.AddMinutes(305),
+            Issuer = issuer,
+            Audience = audience,
+            SigningCredentials = new SigningCredentials
+            (new SymmetricSecurityKey(key),
+            SecurityAlgorithms.HmacSha512Signature)
+        };
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var jwtToken = tokenHandler.WriteToken(token);
+        var stringToken = tokenHandler.WriteToken(token);
+        LoginRes log = new LoginRes()
+        {
+            Token = stringToken,
+            Id = id
+         };
+        return Results.Ok(stringToken);
+    }
+    return Results.Unauthorized();
+});
+app.MapPost("/login-provider",
+[AllowAnonymous] (LoginUser user, UserDbContext db) =>
+{
+    var users = db.ServiceProviders.ToList();
+    bool match = false;
+    foreach (var temp in users)
+    {
+        if (temp.Email == user.UserName && temp.Password == user.Password)
+        {
+            match = true;
+            break;
+        }
+
+    }
+    if (match)
+    {
+        var issuer = builder.Configuration["Jwt:Issuer"];
+        var audience = builder.Configuration["Jwt:Audience"];
+        var key = Encoding.ASCII.GetBytes
+        (builder.Configuration["Jwt:Key"]);
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim("Id", Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Email, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti,
+                Guid.NewGuid().ToString())
+             }),
+            Expires = DateTime.UtcNow.AddMinutes(5),
+            Issuer = issuer,
+            Audience = audience,
+            SigningCredentials = new SigningCredentials
+            (new SymmetricSecurityKey(key),
+            SecurityAlgorithms.HmacSha512Signature)
+        };
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var jwtToken = tokenHandler.WriteToken(token);
+        var stringToken = tokenHandler.WriteToken(token);
+        return Results.Ok(stringToken);
+    }
+    return Results.Unauthorized();
+});
+
+
+
+
+app.MapGet("/myself",
+[AllowAnonymous]( HttpContext context) =>
+{
+
+    return Results.Ok (context.User.ToString());
+});
+
+app.UseCors(x => x
+    .AllowAnyMethod()
+    .AllowAnyHeader()
+    .SetIsOriginAllowed(origin => true) // allow any origin
+    .AllowCredentials()); // allow credentials
+//auth
+app.UseAuthentication();
+app.UseAuthorization();
+app.Run();
+public class LoginRes
+{
+    public string Token { get; set; }
+    public int Id { get; set; }
+}
+public class LoginUser
+{
+    public string UserName { get; set; }
+    public string Password { get; set; }
+}
 
 //Context Class
-public class UserDbContext : DbContext
+public class UserDbContext : IdentityDbContext<ApplicationUser>
 {
-    public UserDbContext(DbContextOptions options) : base(options) { }
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    public UserDbContext(DbContextOptions<UserDbContext> options, IHttpContextAccessor httpContextAccessor) : base(options)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
     public DbSet<User> Users { get; set; }
     public DbSet<ServiceProvider> ServiceProviders { get; set; }
 }
@@ -149,6 +325,7 @@ public class UserRequestsServiceR
     [Key, Column(Order = 2)]
     public int ServiceProviderID { get; set; }
     public ServiceProvider ServiceProvider { get; set; }
+
 }
 
 public class ServiceProvider
