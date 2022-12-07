@@ -51,7 +51,7 @@ if (app.Environment.IsDevelopment())
 }
 
 //find all users
-app.MapGet("/Users", async (UserDbContext db) =>
+app.MapGet("/Users",  async  (UserDbContext db) =>
 {
     return await db.Users.ToListAsync();
 });
@@ -60,23 +60,48 @@ app.MapGet("/ServiceProviders", async (UserDbContext db) =>
 {
     return await db.ServiceProviders.ToListAsync();
 });
-app.MapGet("/ServiceProviders/Electrician/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
+app.MapGet("/ServiceProviders/Electrician/{lat}/{lon}",  (UserDbContext db, double lat, double lon) =>
 {
-    return await db.ServiceProviders.
-    Where(u => u.ServiceType == TypeofEmployees.Electrician).
-    ToListAsync();
+    GoogleLocation gl = new GoogleLocation();
+    gl.Lat = lat;
+    gl.Long = lon;
+    List<ServiceProvider> list= db.ServiceProviders.
+    ToList();
+    for(int i = 0; i < list.Count(); i++) 
+    {
+        if(list.ElementAt(i).DistanceFrom(gl)>10)
+            list.RemoveAt(i);
+    }
+    return list;
+
 });
-app.MapGet("/ServiceProviders/Technician/{lat}/{lon}", async (UserDbContext db) =>
+app.MapGet("/ServiceProviders/Technician/{lat}/{lon}",  (UserDbContext db, double lat, double lon) =>
 {
-    return await db.ServiceProviders.
-    Where(u => u.ServiceType == TypeofEmployees.Technician).
-    ToListAsync();
+    GoogleLocation gl = new GoogleLocation();
+    gl.Lat = lat;
+    gl.Long = lon;
+    List<ServiceProvider> list = db.ServiceProviders.
+    ToList();
+    for (int i = 0; i < list.Count(); i++)
+    {
+        if (list.ElementAt(i).DistanceFrom(gl) > 10)
+            list.RemoveAt(i);
+    }
+    return list;
 });
-app.MapGet("/ServiceProviders/Plumber/{lat}/{lon}", async (UserDbContext db,double lat, double lon) =>
+app.MapGet("/ServiceProviders/Plumber/{lat}/{lon}",  (UserDbContext db,double lat, double lon) =>
 {
-    return await db.ServiceProviders.
-    Where(u => u.ServiceType == TypeofEmployees.Plumber).
-    ToListAsync();
+    GoogleLocation gl = new GoogleLocation();
+    gl.Lat = lat;
+    gl.Long = lon;
+    List<ServiceProvider> list = db.ServiceProviders.
+    ToList();
+    for (int i = 0; i < list.Count(); i++)
+    {
+        if (list.ElementAt(i).DistanceFrom(gl) > 10)
+            list.RemoveAt(i);
+    }
+    return list;
 });
 app.MapGet("/ServiceProviders/DeliveryMan/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
 {
@@ -160,7 +185,15 @@ app.MapDelete("/ServiceProvider/{id}", async (UserDbContext db, int id) =>
 });
 
 
-
+app.MapPost("/Add_ServiceProvider/{sid}/{uid}", async (UserDbContext db, int sid,int uid) =>
+{
+    UserRequestsServiceR us = new UserRequestsServiceR();
+    us.UserID = uid;
+    us.ServiceProviderID = sid;
+   db.UserRequestsServices.Add(us);
+    db.SaveChanges();
+    return Results.Ok("ADDED");
+});
 app.MapPost("/login-user",
 [AllowAnonymous] (LoginUser user,UserDbContext db) =>
 {
@@ -299,6 +332,7 @@ public class UserDbContext : IdentityDbContext<ApplicationUser>
     }
     public DbSet<User> Users { get; set; }
     public DbSet<ServiceProvider> ServiceProviders { get; set; }
+    public DbSet<UserRequestsServiceR> UserRequestsServices { get; set; }
 }
 //Models
 public class User
@@ -318,13 +352,11 @@ public class User
 
 public class UserRequestsServiceR
 {
-    [Key,Column(Order =1)]
+    [Key]
+    public Guid ServiceId { get; set; } = Guid.NewGuid();
     public int UserID { get; set; }
-    public User User { get; set; }
 
-    [Key, Column(Order = 2)]
     public int ServiceProviderID { get; set; }
-    public ServiceProvider ServiceProvider { get; set; }
 
 }
 
@@ -349,6 +381,37 @@ public class ServiceProvider
 
     public double Lat { get; set; }
     public TypeofEmployees ServiceType { get; set; }
+    public double DistanceFrom(GoogleLocation temp)
+    {
+        double lon1 = toRadians(this.Lon);
+        double lon2 = toRadians(temp.Long);
+        double lat1 = toRadians(this.Lat);
+        double lat2 = toRadians(temp.Lat);
+        double dlon = lon2 - lon1;
+        double dlat = lat2 - lat1;
+        double a = Math.Pow(Math.Sin(dlat / 2), 2) +
+                   Math.Cos(lat1) * Math.Cos(lat2) *
+                   Math.Pow(Math.Sin(dlon / 2), 2);
+
+        double c = 2 * Math.Asin(Math.Sqrt(a));
+
+        // Radius of earth in
+        // kilometers. Use 3956
+        // for miles
+        double r = 6371;
+
+        // calculate the result
+        return (c * r);
+
+    }
+    private double toRadians(
+       double angleIn10thofaDegree)
+    {
+        // Angle in 10th
+        // of a degree
+        return (angleIn10thofaDegree *
+                       Math.PI) / 180;
+    }
 
 
 }
@@ -362,4 +425,8 @@ public enum TypeofEmployees
     Carpenter = 200,
     Mechanic = 200,
 }
-
+public class GoogleLocation
+{
+    public double Long { get; set; }
+    public double Lat { get; set; }
+}
