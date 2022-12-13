@@ -12,6 +12,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using ServiceProviderApi.Models;
+using ServiceProvider = ServiceProviderApi.Models.ServiceProvider;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -160,7 +162,7 @@ app.MapDelete("/Users/{id}", async (UserDbContext db, int id) =>
     }
 });
 
-app.MapPost("/Add_ServiceProvider", async (UserDbContext db, ServiceProvider serviceprovider) =>
+app.MapPost("/Add_ServiceProvider", async (UserDbContext db, ServiceProviderApi.Models.ServiceProvider serviceprovider) =>
 {
     var userExists = await db.ServiceProviders.FirstOrDefaultAsync(u => u.Email == serviceprovider.Email);
     if (userExists != null)
@@ -331,100 +333,14 @@ public class UserDbContext : IdentityDbContext<ApplicationUser>
         _httpContextAccessor = httpContextAccessor;
     }
     public DbSet<User> Users { get; set; }
-    public DbSet<ServiceProvider> ServiceProviders { get; set; }
+    public DbSet<ServiceProviderApi.Models.ServiceProvider> ServiceProviders { get; set; }
     public DbSet<UserRequestsServiceR> UserRequestsServices { get; set; }
 }
 //Models
-public class User
-{
-    public string FirstName { get; set; }
-    public string LastName { get; set; }
-    [Key]
-    public int UserID { get; set; }
-
-    public string Email { get; set; }
-
-    public string Password { get; set; }
-
-    public string PhoneNumber { get; set; }
-
-}
-
-public class UserRequestsServiceR
-{
-    [Key]
-    public Guid ServiceId { get; set; } = Guid.NewGuid();
-    public int UserID { get; set; }
-
-    public int ServiceProviderID { get; set; }
-
-}
-
-public class ServiceProvider
-{
-    public string FirstName { get; set; }
-    public string LastName { get; set; }
-    [Key]
-    public int ServiceProviderID { get; set; }
-
-    public string Email { get; set; }
-
-    public string NID { get; set; }
-
-    public string Address { get; set; }
-
-    public string Password { get; set; }
-
-    public string PhoneNumber { get; set; }
-
-    public double Lon { get; set; }
-
-    public double Lat { get; set; }
-    public TypeofEmployees ServiceType { get; set; }
-    public double DistanceFrom(GoogleLocation temp)
-    {
-        double lon1 = toRadians(this.Lon);
-        double lon2 = toRadians(temp.Long);
-        double lat1 = toRadians(this.Lat);
-        double lat2 = toRadians(temp.Lat);
-        double dlon = lon2 - lon1;
-        double dlat = lat2 - lat1;
-        double a = Math.Pow(Math.Sin(dlat / 2), 2) +
-                   Math.Cos(lat1) * Math.Cos(lat2) *
-                   Math.Pow(Math.Sin(dlon / 2), 2);
-
-        double c = 2 * Math.Asin(Math.Sqrt(a));
-
-        // Radius of earth in
-        // kilometers. Use 3956
-        // for miles
-        double r = 6371;
-
-        // calculate the result
-        return (c * r);
-
-    }
-    private double toRadians(
-       double angleIn10thofaDegree)
-    {
-        // Angle in 10th
-        // of a degree
-        return (angleIn10thofaDegree *
-                       Math.PI) / 180;
-    }
 
 
-}
-public enum TypeofEmployees
-{
-    Electrician =200,
-    Technician =200,
-    Plumber =200,
-    DeliveryMan =100,
-    Driver = 1000,
-    Carpenter = 200,
-    Mechanic = 200,
-}
+
+
 public class GoogleLocation
 {
     public double Long { get; set; }
