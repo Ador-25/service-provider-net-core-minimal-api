@@ -52,6 +52,12 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
+app.MapGet("/operator", (ClaimsPrincipal user, UserDbContext db) =>
+{
+    return db.Users.Where(u=>u.Email==user.Identity.Name
+        ).ToList();
+}).RequireAuthorization();
+
 //find all users
 app.MapGet("/Users",  async  (UserDbContext db) =>
 {
@@ -139,15 +145,95 @@ app.MapGet("/ServiceProviders/{id}", async (UserDbContext db, int id) =>
 {
     return await db.ServiceProviders.FindAsync(id) is ServiceProvider serviceprovider ? Results.Ok(serviceprovider) : Results.NotFound();
 });
-app.MapPost("/Add_User", async (UserDbContext db, User user) =>
+
+app.MapPost("/signin", async (UserDbContext db,
+    LoginUser model,
+    UserManager<ApplicationUser> _userManager,
+    RoleManager<IdentityRole> _roleManager) =>
 {
-    var userExists = await db.Users.FirstOrDefaultAsync(u => u.Email == user.Email);
-    if(userExists!=null)
-        return Results.Ok("Already Exists");
-    await db.Users.AddAsync(user);
-    await db.SaveChangesAsync();
-    return Results.Ok(user);
+    var user = await _userManager.FindByNameAsync(model.UserName);
+    if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
+    {
+        var userRoles = await _userManager.GetRolesAsync(user);
+
+        var authClaims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, user.UserName),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                };
+
+        foreach (var userRole in userRoles)
+        {
+            authClaims.Add(new Claim(ClaimTypes.Role, userRole));
+        }
+
+        var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]));
+        var token = new JwtSecurityToken(
+            issuer: builder.Configuration["JWT:Issuer"],
+            audience: builder.Configuration["JWT:Audience"],
+            expires: DateTime.Now.AddHours(3),
+            claims: authClaims,
+            signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
+            );
+
+        return Results.Ok(new
+        {
+            token = new JwtSecurityTokenHandler().WriteToken(token),
+            expiration = token.ValidTo
+        });
+    }
+    else
+    {
+        return Results.Ok(new Response { Status="", Message=""});
+    }
+    
 });
+
+app.MapPost("/signup-user", async (UserDbContext db,
+    User model,
+    UserManager<ApplicationUser> _userManager,
+    RoleManager<IdentityRole> _roleManager) =>
+{
+    bool success = false;
+    var userExists = await _userManager.FindByNameAsync(model.Email);
+    if (userExists != null)
+    {
+        Response response = new Response();
+        response.Status = "Error";
+        response.Message = "Already Exists";
+        success = false;
+    }
+
+
+    ApplicationUser user = new ApplicationUser()
+    {
+        Email = model.Email,
+        SecurityStamp = Guid.NewGuid().ToString(),
+        UserName = model.Email
+    };
+    var result = await _userManager.CreateAsync(user, model.Password);
+    if (!result.Succeeded)
+    {
+        success = false;
+    }
+    else success = true;
+
+
+    if (success)
+    {
+        db.Users.Add(model);
+        db.SaveChanges();
+        return Results.Ok(new Response { Status = "Success", Message = "User created successfully!" });
+    }
+    else
+    {
+        return Results.Ok(new Response { Status = "Success", Message = "Failed" });
+    }
+
+});
+
+
+
 app.MapDelete("/Users/{id}", async (UserDbContext db, int id) =>
 {
     if (await db.Users.FindAsync(id) is User user)

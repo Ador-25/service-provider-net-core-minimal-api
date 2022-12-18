@@ -4,5 +4,6 @@
     {
         public const string Provider = "Provider";
         public const string User = "User";
+        public const string Company = "Company";
     }
 }
