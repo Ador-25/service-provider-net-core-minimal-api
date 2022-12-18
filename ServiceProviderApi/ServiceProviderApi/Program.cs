@@ -221,6 +221,16 @@ app.MapPost("/signup-user", async (UserDbContext db,
 
     if (success)
     {
+
+        //EDIT HERE IF ERROR 
+        if (!await _roleManager.RoleExistsAsync(UserRoles.Provider))
+            await _roleManager.CreateAsync(new IdentityRole(UserRoles.Provider));
+        if (!await _roleManager.RoleExistsAsync(UserRoles.User))
+            await _roleManager.CreateAsync(new IdentityRole(UserRoles.User));
+        if (await _roleManager.RoleExistsAsync(UserRoles.User))
+        {
+            await _userManager.AddToRoleAsync(user, UserRoles.User);
+        }
         db.Users.Add(model);
         db.SaveChanges();
         return Results.Ok(new Response { Status = "Success", Message = "User created successfully!" });
@@ -231,6 +241,60 @@ app.MapPost("/signup-user", async (UserDbContext db,
     }
 
 });
+
+app.MapPost("/signup-sp", async (UserDbContext db,
+    ServiceProvider model,
+    UserManager<ApplicationUser> _userManager,
+    RoleManager<IdentityRole> _roleManager) =>
+{
+    bool success = false;
+    var userExists = await _userManager.FindByNameAsync(model.Email);
+    if (userExists != null)
+    {
+        Response response = new Response();
+        response.Status = "Error";
+        response.Message = "Already Exists";
+        success = false;
+    }
+
+
+    ApplicationUser user = new ApplicationUser()
+    {
+        Email = model.Email,
+        SecurityStamp = Guid.NewGuid().ToString(),
+        UserName = model.Email
+    };
+    var result = await _userManager.CreateAsync(user, model.Password);
+    if (!result.Succeeded)
+    {
+        success = false;
+    }
+    else success = true;
+
+
+    if (success)
+    {
+        if (!await _roleManager.RoleExistsAsync(UserRoles.Provider))
+            await _roleManager.CreateAsync(new IdentityRole(UserRoles.Provider));
+        if (!await _roleManager.RoleExistsAsync(UserRoles.User))
+            await _roleManager.CreateAsync(new IdentityRole(UserRoles.User));
+
+        if (await _roleManager.RoleExistsAsync(UserRoles.Provider))
+        {
+            await _userManager.AddToRoleAsync(user, UserRoles.Provider);
+        }
+
+        db.ServiceProviders.Add(model);
+        db.SaveChanges();
+        return Results.Ok(new Response { Status = "Success", Message = "Service Provider created successfully!" });
+    }
+    else
+    {
+        return Results.Ok(new Response { Status = "Success", Message = "Failed" });
+    }
+
+});
+
 
 
 
