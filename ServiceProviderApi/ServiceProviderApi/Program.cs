@@ -248,7 +248,7 @@ app.MapDelete("/Users/{id}", async (UserDbContext db, int id) =>
     }
 });
 
-app.MapPost("/Add_ServiceProvider", async (UserDbContext db, ServiceProviderApi.Models.ServiceProvider serviceprovider) =>
+app.MapPost("/Add_ServiceProvider/{lat}/{lon}", async (UserDbContext db, ServiceProviderApi.Models.ServiceProvider serviceprovider,double lat, double lon) =>
 {
     var userExists = await db.ServiceProviders.FirstOrDefaultAsync(u => u.Email == serviceprovider.Email);
     if (userExists != null)
