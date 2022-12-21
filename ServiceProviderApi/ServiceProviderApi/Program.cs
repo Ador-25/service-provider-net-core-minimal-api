@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using ServiceProviderApi.Auth;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -64,83 +66,140 @@ app.MapGet("/Users",  async  (UserDbContext db) =>
     return await db.Users.ToListAsync();
 });
 //find all service providers
-app.MapGet("/ServiceProviders", async (UserDbContext db) =>
-{
-    return await db.ServiceProviders.ToListAsync();
-});
-app.MapGet("/ServiceProviders/Electrician/{lat}/{lon}",  (UserDbContext db, double lat, double lon) =>
+app.MapGet("/ServiceProviders/{lon}/{lat}", async (UserDbContext db,double lat,double lon) =>
 {
     GoogleLocation gl = new GoogleLocation();
-    gl.Lat = lat;
-    gl.Long = lon;
-    List<ServiceProvider> list= db.ServiceProviders.
+    gl.tempLat = lat;
+    gl.tempLon = lon;
+    List<ServiceProvider> list = db.ServiceProviders.
     ToList();
-    for(int i = 0; i < list.Count(); i++) 
+    for (int i = 0; i < list.Count(); i++)
     {
-        if(list.ElementAt(i).DistanceFrom(gl)>10)
+        if (list.ElementAt(i).DistanceFrom(gl) > 10 && list.ElementAt(i).ServiceType == 0)
+            list.RemoveAt(i);
+    }
+    return list;
+});
+
+
+
+
+
+
+//tested
+app.MapGet("/ServiceProviders/Electricians/{lon}/{lat}",  (UserDbContext db,double lat, double lon) =>
+{
+    GoogleLocation gl = new GoogleLocation();
+    gl.tempLat = lat;
+    gl.tempLon = lon;
+    List<ServiceProvider> list = db.ServiceProviders.
+    ToList();
+    for (int i = 0; i < list.Count(); i++)
+    {
+        if (list.ElementAt(i).DistanceFrom(gl) > 10 && list.ElementAt(i).ServiceType == 0)
             list.RemoveAt(i);
     }
     return list;
 
 });
+
+//tested
 app.MapGet("/ServiceProviders/Technician/{lat}/{lon}",  (UserDbContext db, double lat, double lon) =>
 {
     GoogleLocation gl = new GoogleLocation();
-    gl.Lat = lat;
-    gl.Long = lon;
-    List<ServiceProvider> list = db.ServiceProviders.
+    gl.tempLat = lat;
+    gl.tempLon = lon;
+    List<ServiceProvider> list = db.ServiceProviders.Where(u=>u.ServiceType==TypeofEmployees.Technician).
     ToList();
     for (int i = 0; i < list.Count(); i++)
     {
-        if (list.ElementAt(i).DistanceFrom(gl) > 10)
+        if (list.ElementAt(i).DistanceFrom(gl) > 10 && list.ElementAt(i).ServiceType == TypeofEmployees.Technician)
             list.RemoveAt(i);
     }
     return list;
 });
+
+//tested
 app.MapGet("/ServiceProviders/Plumber/{lat}/{lon}",  (UserDbContext db,double lat, double lon) =>
 {
     GoogleLocation gl = new GoogleLocation();
-    gl.Lat = lat;
-    gl.Long = lon;
+    gl.tempLat = lat;
+    gl.tempLon= lon;
     List<ServiceProvider> list = db.ServiceProviders.
     ToList();
     for (int i = 0; i < list.Count(); i++)
     {
-        if (list.ElementAt(i).DistanceFrom(gl) > 10)
+        if (list.ElementAt(i).DistanceFrom(gl) > 10 && list.ElementAt(i).ServiceType == TypeofEmployees.Plumber)
             list.RemoveAt(i);
     }
     return list;
 });
+
+//tested
 app.MapGet("/ServiceProviders/DeliveryMan/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
 {
-    return await db.ServiceProviders.
-    Where(u => u.ServiceType == TypeofEmployees.DeliveryMan).
-    ToListAsync();
-});
-app.MapGet("/ServiceProviders/Driver/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
-{
-    return await db.ServiceProviders.
-    Where(u => u.ServiceType == TypeofEmployees.Driver).
-    ToListAsync();
-});
-app.MapGet("/ServiceProviders/Carpenter/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
-{
-    return await db.ServiceProviders.
-    Where(u => u.ServiceType == TypeofEmployees.Carpenter).
-    ToListAsync();
-});
-app.MapGet("/ServiceProviders/Mechanic/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
-{
-    return await db.ServiceProviders.
-    Where(u => u.ServiceType == TypeofEmployees.Mechanic).
-    ToListAsync();
-});
-app.MapGet("/Users/{email}", async (UserDbContext db, string email) =>
-{
-    return db.Users
-    .Where(u => u.Email == email).First();
+    GoogleLocation gl = new GoogleLocation();
+    gl.tempLat = lat;
+    gl.tempLon = lon;
+    List<ServiceProvider> list = db.ServiceProviders.
+    ToList();
+    for (int i = 0; i < list.Count(); i++)
+    {
+        if (list.ElementAt(i).DistanceFrom(gl) > 10 && list.ElementAt(i).ServiceType == TypeofEmployees.DeliveryMan)
+            list.RemoveAt(i);
+    }
+    return list;
 });
 
+//tested
+app.MapGet("/ServiceProviders/Driver/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
+{
+    GoogleLocation gl = new GoogleLocation();
+    gl.tempLat = lat;
+    gl.tempLon = lon;
+    List<ServiceProvider> list = db.ServiceProviders.
+    ToList();
+    for (int i = 0; i < list.Count(); i++)
+    {
+        if (list.ElementAt(i).DistanceFrom(gl) > 10 && list.ElementAt(i).ServiceType == TypeofEmployees.Driver)
+            list.RemoveAt(i);
+    }
+    return list;
+});
+
+//tested
+app.MapGet("/ServiceProviders/Carpenter/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
+{
+    GoogleLocation gl = new GoogleLocation();
+    gl.tempLat = lat;
+    gl.tempLon = lon;
+    List<ServiceProvider> list = db.ServiceProviders.
+    ToList();
+    for (int i = 0; i < list.Count(); i++)
+    {
+        if (list.ElementAt(i).DistanceFrom(gl) > 10 && list.ElementAt(i).ServiceType == TypeofEmployees.Carpenter)
+            list.RemoveAt(i);
+    }
+    return list;
+});
+
+//tested
+app.MapGet("/ServiceProviders/Mechanic/{lat}/{lon}", async (UserDbContext db, double lat, double lon) =>
+{
+    GoogleLocation gl = new GoogleLocation();
+    gl.tempLat = lat;
+    gl.tempLon = lon;
+    List<ServiceProvider> list = db.ServiceProviders.
+    ToList();
+    for (int i = 0; i < list.Count(); i++)
+    {
+        if (list.ElementAt(i).DistanceFrom(gl) > 10 && list.ElementAt(i).ServiceType == TypeofEmployees.Mechanic)
+            list.RemoveAt(i);
+    }
+    return list;
+});
+
+//tested
 app.MapGet("/ServiceProviders/{id}", async (UserDbContext db, int id) =>
 {
     return await db.ServiceProviders.FindAsync(id) is ServiceProvider serviceprovider ? Results.Ok(serviceprovider) : Results.NotFound();
@@ -222,22 +281,14 @@ app.MapPost("/signup-user", async (UserDbContext db,
     if (success)
     {
 
-        //EDIT HERE IF ERROR 
-        if (!await _roleManager.RoleExistsAsync(UserRoles.Provider))
-            await _roleManager.CreateAsync(new IdentityRole(UserRoles.Provider));
-        if (!await _roleManager.RoleExistsAsync(UserRoles.User))
-            await _roleManager.CreateAsync(new IdentityRole(UserRoles.User));
-        if (await _roleManager.RoleExistsAsync(UserRoles.User))
-        {
-            await _userManager.AddToRoleAsync(user, UserRoles.User);
-        }
+
         db.Users.Add(model);
         db.SaveChanges();
         return Results.Ok(new Response { Status = "Success", Message = "User created successfully!" });
     }
     else
     {
-        return Results.Ok(new Response { Status = "Success", Message = "Failed" });
+        return Results.Ok(new Response { Status = "Error", Message = "Failed" });
     }
 
 });
@@ -274,15 +325,6 @@ app.MapPost("/signup-sp", async (UserDbContext db,
 
     if (success)
     {
-        if (!await _roleManager.RoleExistsAsync(UserRoles.Provider))
-            await _roleManager.CreateAsync(new IdentityRole(UserRoles.Provider));
-        if (!await _roleManager.RoleExistsAsync(UserRoles.User))
-            await _roleManager.CreateAsync(new IdentityRole(UserRoles.User));
-
-        if (await _roleManager.RoleExistsAsync(UserRoles.Provider))
-        {
-            await _userManager.AddToRoleAsync(user, UserRoles.Provider);
-        }
 
         db.ServiceProviders.Add(model);
         db.SaveChanges();
@@ -290,7 +332,7 @@ app.MapPost("/signup-sp", async (UserDbContext db,
     }
     else
     {
-        return Results.Ok(new Response { Status = "Success", Message = "Failed" });
+        return Results.Ok(new Response { Status = "Error", Message = "Failed" });
     }
 
 });
@@ -312,16 +354,6 @@ app.MapDelete("/Users/{id}", async (UserDbContext db, int id) =>
     }
 });
 
-app.MapPost("/Add_ServiceProvider/{lat}/{lon}", async (UserDbContext db, ServiceProviderApi.Models.ServiceProvider serviceprovider,double lat, double lon) =>
-{
-    var userExists = await db.ServiceProviders.FirstOrDefaultAsync(u => u.Email == serviceprovider.Email);
-    if (userExists != null)
-        await db.ServiceProviders.AddAsync(serviceprovider);
-    await db.AddAsync(serviceprovider);
-    await db.SaveChangesAsync();
-
-    return Results.Ok(serviceprovider);
-});
 app.MapDelete("/ServiceProvider/{id}", async (UserDbContext db, int id) =>
 {
     if (await db.ServiceProviders.FindAsync(id) is ServiceProvider serviceprovider)
@@ -337,14 +369,16 @@ app.MapDelete("/ServiceProvider/{id}", async (UserDbContext db, int id) =>
 });
 
 
-app.MapPost("/Add_ServiceProvider/{sid}/{uid}", async (UserDbContext db, int sid,int uid) =>
+app.MapPost("/req_ServiceProvider/{sid}",async (HttpContext con,UserDbContext db,[FromBody]UserRequestsServiceR temp, int sid) =>
 {
     UserRequestsServiceR us = new UserRequestsServiceR();
-    us.UserID = uid;
-    us.ServiceProviderID = sid;
-   db.UserRequestsServices.Add(us);
+    db.UserRequestsServices.Add(temp);
     db.SaveChanges();
     return Results.Ok("ADDED");
+});
+app.MapGet("/requests", async (HttpContext con, UserDbContext db) =>
+{
+    return Results.Ok(db.UserRequestsServices.ToList());
 });
 app.MapPost("/login-user",
 [AllowAnonymous] (LoginUser user,UserDbContext db) =>
@@ -493,6 +527,6 @@ public class UserDbContext : IdentityDbContext<ApplicationUser>
 
 public class GoogleLocation
 {
-    public double Long { get; set; }
-    public double Lat { get; set; }
+    public double tempLon { get; set; }
+    public double tempLat { get; set; }
 }

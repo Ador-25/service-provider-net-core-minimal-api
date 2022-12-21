@@ -6,9 +6,12 @@ namespace ServiceProviderApi.Models
     {
         [Key]
         public Guid ServiceId { get; set; } = Guid.NewGuid();
-        public int UserID { get; set; }
-
-        public int ServiceProviderID { get; set; }
+        public string? UserEmail { get; set; }
+        public string? UserPhoneNumber { get; set; }
+        public string? UserAddress { get; set; }
+        public string? Task { get; set; }
+        public string? UserBid { get; set; }
+        public int? ServiceProviderID { get; set; }
 
     }
 }

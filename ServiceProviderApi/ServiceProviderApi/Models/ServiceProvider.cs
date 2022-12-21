@@ -27,9 +27,9 @@ namespace ServiceProviderApi.Models
         public double DistanceFrom(GoogleLocation temp)
         {
             double lon1 = toRadians(this.Lon);
-            double lon2 = toRadians(temp.Long);
+            double lon2 = toRadians(temp.tempLon);
             double lat1 = toRadians(this.Lat);
-            double lat2 = toRadians(temp.Lat);
+            double lat2 = toRadians(temp.tempLat);
             double dlon = lon2 - lon1;
             double dlat = lat2 - lat1;
             double a = Math.Pow(Math.Sin(dlat / 2), 2) +
